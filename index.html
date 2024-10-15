@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Data Extractor</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow: auto;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        const categorySettings = {
+            'Category1': {
+                sheetName: 'Marketing',
+                columns: 'C,D,E,F,G',
+                startRow: 84,
+                endRow: 154
+            },
+            'Category2': {
+                sheetName: 'Marketing',
+                columns: 'C,D,E,F,G',
+                startRow: 158,
+                endRow: 248
+            }
+        };
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const category = document.getElementById('category').value;
+            const settings = categorySettings[category];
+
+            if (!settings) {
+                alert('Invalid category selected');
+                return;
+            }
+
+            const params = new URLSearchParams(settings).toString();
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+
+                const result = await response.json();
+                displayResult(result.data || [], result.error || '');
+            } catch (error) {
+                displayResult([], `Error: ${error.message}`);
+            }
+        }
+
+        function displayResult(data, errorMessage) {
+            const outputElement = document.getElementById('output');
+            const snippetElement = document.getElementById('snippet');
+            outputElement.innerHTML = '';
+            snippetElement.innerHTML = '';
+
+            if (errorMessage) {
+                outputElement.textContent = errorMessage;
+                return;
+            }
+
+            if (!data.length) {
+                outputElement.textContent = 'No data found.';
+                return;
+            }
+
+            // Create table with headers
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = ['Column A', 'Column B', 'Column C', 'Column D', 'Column E'];
+
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Add data rows
+            const tbody = document.createElement('tbody');
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell !== null ? cell : '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            outputElement.appendChild(table);
+
+            // Create a snippet of the data in array form
+            const arraySnippet = JSON.stringify(data, null, 2);
+            const pre = document.createElement('pre');
+            pre.textContent = `const dataArray = ${arraySnippet};`;
+            snippetElement.appendChild(pre);
+
+            // Add a button to copy the snippet
+            const copyButton = document.createElement('button');
+            copyButton.textContent = 'Copy to Clipboard';
+            copyButton.onclick = () => copyToClipboard(pre.textContent);
+            snippetElement.appendChild(copyButton);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Snippet copied to clipboard!');
+            }).catch(err => {
+                alert('Failed to copy text: ', err);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Excel Data Extractor</h1>
+    <form id="excelForm" onsubmit="handleFormSubmit(event)">
+        <label for="category">Select Category:</label>
+        <select id="category" name="category">
+            <option value="Category1">basegame reel set</option>
+            <option value="Category2">freegame reel set</option>
+        </select>
+        <br>
+        <button type="submit">Extract Data</button>
+    </form>
+
+    <h2>Extracted Data:</h2>
+    <div id="output"></div>
+
+    <h2>Array Snippet:</h2>
+    <div id="snippet"></div>
+</body>
+</html>
